@@ -3,16 +3,36 @@ import _ from "lodash";
 import { $, nothrow, sleep } from "zx";
 
 test("watches for changes in directory", async (t) => {
-  const tempDir: string = _.trim((await $`mktemp -d`).stdout);
-  const file = `${tempDir}/file`;
-  const watcher = $`echo ${tempDir} | entr -d ls ${tempDir}`;
+  const dir: string = _.trim((await $`mktemp -d`).stdout);
+  const logger: string = _.trim((await $`mktemp`).stdout);
+  const logger2: string = _.trim((await $`mktemp`).stdout);
+  const log = async () => (await $`cat ${logger}`).stdout;
 
-  let lastOutput = "";
-  watcher.stdout.on("data", (d) => (lastOutput = String(d)));
+  await $`touch ${dir}/file1`;
 
-  sleep(100);
+  const watcher = $`while sleep 0.01; do find ${dir} | entr -dz -s 'sleep .01 && ls ${dir} > ${logger} && cp ${dir}/file1 ${logger2}'; done`;
+  // const watcher = $`while sleep 0.01; do find ${dir} | entr -d echo hello; done`;
 
-  t.deepEqual(lastOutput, "");
+  await sleep(40);
+
+  t.deepEqual(await log(), `file1\n`);
+
+  await $`touch ${dir}/file2`;
+  await sleep(40);
+
+  t.deepEqual(await log(), `file1\nfile2\n`);
+
+  await $`touch ${dir}/file3`;
+  await sleep(40);
+
+  t.deepEqual(await log(), `file1\nfile2\nfile3\n`);
+
+  await $`echo line1 >> ${dir}/file1`;
+  await sleep(40);
+
+  t.deepEqual((await $`cat ${logger2}`).stdout, `line1\n`);
+
+  await watcher.kill();
 });
 
 test("watches for changes - files", async (t) => {

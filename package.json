@@ -1,7 +1,8 @@
 {
   "type": "module",
   "scripts": {
-    "deps": "brew install entr"
+    "deps": "brew install entr",
+    "test": "ava"
   },
   "dependencies": {
     "@types/lodash": "^4.14.179",
@@ -12,6 +13,7 @@
     "zx": "^5.2.0"
   },
   "ava": {
+    "timeout": "2m",
     "extensions": {
       "ts": "module"
     },
